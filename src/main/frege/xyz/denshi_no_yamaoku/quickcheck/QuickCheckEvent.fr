@@ -1,0 +1,52 @@
+module xyz.denshi_no_yamaoku.quickcheck.QuickCheckEvent where
+
+import xyz.denshi_no_yamaoku.quickcheck.NativeDefs (Event, Fingerprint, OptionalThrowable, Selector, Status)
+
+native module interface Event where {
+  final private TEventData dat;
+  QuickCheckEvent(final TEventData dat) { this.dat = dat; }
+  final public static QuickCheckEvent mk(final TEventData dat) { return new QuickCheckEvent(dat); }
+
+  @Override
+  final public String fullyQualifiedName() {
+    return TEventData.fullyQualifiedName(dat);
+  }
+
+  @Override
+  final public sbt.testing.Fingerprint fingerprint() {
+    return TEventData.fingerprint(dat);
+  }
+
+  @Override
+  final public sbt.testing.Selector selector() {
+    return TEventData.selector(dat);
+  }
+
+  @Override
+  final public sbt.testing.Status status() {
+    return TEventData.status(dat);
+  }
+
+  @Override
+  final public sbt.testing.OptionalThrowable throwable() {
+    return TEventData.throwable(dat);
+  }
+
+  @Override
+  final public long duration() {
+    return TEventData.duration(dat);
+  }
+}
+
+--- Each field implements @Event@.
+data EventData = EventData
+  { fullyQualifiedName :: String
+  , fingerprint :: Fingerprint
+  , selector :: Selector
+  , status :: Status
+  , throwable :: OptionalThrowable
+  , duration :: Long
+  }
+
+--- Instantiates the interface @Event@ with the supplied 'EventData'.
+pure native mk xyz.denshi_no_yamaoku.quickcheck.QuickCheckEvent.mk :: EventData -> Event

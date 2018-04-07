@@ -1,0 +1,85 @@
+module xyz.denshi_no_yamaoku.quickcheck.QuickCheckRunner where
+
+import frege.compiler.Javatypes (forName)
+import frege.compiler.common.CompilerOptions (standardGlobal)
+import frege.compiler.types.Global (Global)
+import frege.control.monad.State (evalStateT)
+import frege.java.Net (URLClassLoader)
+import frege.tools.Quick (Counter, Options, checkField, defaultOptions, getProps)
+import xyz.denshi_no_yamaoku.quickcheck.NativeDefs (Fingerprint, Runner, Task, TaskDef)
+import xyz.denshi_no_yamaoku.quickcheck.QuickCheckTask (TaskData, executeCheck)
+
+native module interface Runner where {
+  QuickCheckRunner(final TRunnerData dat) { this.dat = dat; }
+  final public static QuickCheckRunner mk(final TRunnerData dat) { return new QuickCheckRunner(dat); }
+  final public TRunnerData dat;
+
+  @Override public String   done()       { return ""; }
+  @Override public String[] remoteArgs() { return TRunnerData.remoteArgs(dat); }
+  @Override public String[] args()       { return TRunnerData.args(dat); }
+
+  @Override
+  public sbt.testing.Task[] tasks(final sbt.testing.TaskDef[] taskDefs) {
+    return PreludeBase.TST.performUnsafe(
+      TRunnerData.tasks(dat, Thunk.lazy(taskDefs)).call()
+    ).call();
+  }
+}
+
+--- Each field implements @Runner@.
+data RunnerData = RunnerData
+  { args :: JArray String
+  , remoteArgs :: JArray String
+  , tasks :: JArray TaskDef -> IOMutable (JArray Task)
+  }
+
+--- Instantiates the interface @Runner@ with the supplied 'RunnerData'.
+pure native mk xyz.denshi_no_yamaoku.quickcheck.QuickCheckRunner.mk :: RunnerData -> Runner
+
+--- Makes tasks for each 'TaskDef'.
+---
+--- Each 'TaskDef' should represent a Frege module.
+makeTasks :: ClassLoader -> JArray TaskDef -> IOMutable (JArray Task)
+makeTasks loader defs = arrayFromListST =<< do
+    g <- freshGlobal loader
+    let opts = defaultOptions.{ global = g, verbose = True }
+    mapM (makeModuleTask opts) (listFromArray defs)
+
+--- A constant which is recognized by the framework as "no tags".
+noTags :: JArray String
+noTags = arrayFromList empty
+
+--- Makes a 'Task' that spawns 'Task's for each 'Prop' in a module on invocation of @Task.execute@.
+---
+--- Uses reflection to find properties in the module.
+makeModuleTask :: Options -> TaskDef -> IO Task
+makeModuleTask opts taskDef = do
+    let fullyQualifiedName = taskDef.fullyQualifiedName
+    props <- evalStateT (getProps fullyQualifiedName) opts.global
+    cl <- forName fullyQualifiedName True opts.global.sub.loader >>= either throw return
+    return $
+        let tags = noTags
+            execute _ _ = arrayFromListST $ map (makePropTask opts taskDef cl) props
+        in QuickCheckTask.mk $ TaskData { tags, execute, taskDef }
+
+--- Makes a 'Task' for each property (i.e. @foo = property (...)@).
+---
+--- The actual execution of tests is delegated to 'frege.tools.Quick.checkField'.
+makePropTask :: Options -> TaskDef -> Class a -> String -> Task
+makePropTask opts taskDef clas prop =
+    let fullyQualifiedName = taskDef.fullyQualifiedName
+        fingerprint = taskDef.fingerprint
+        runCheck = checkField opts fullyQualifiedName clas prop
+        tags = noTags
+        execute = executeCheck fullyQualifiedName prop fingerprint runCheck
+    in
+    QuickCheckTask.mk $ TaskData { tags, execute, taskDef }
+
+--- Sets up a fresh 'Global' and give it the 'ClassLoader' provided by the test framework.
+freshGlobal :: ClassLoader -> IO Global
+freshGlobal testframeworkLoader = do
+    loader <- do
+        noURLs <- newArray 0
+        URLClassLoader.new noURLs testframeworkLoader
+    g <- standardGlobal
+    return g.{ sub <- _.{ loader } }

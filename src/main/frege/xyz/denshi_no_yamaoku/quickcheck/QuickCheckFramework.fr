@@ -1,0 +1,44 @@
+module xyz.denshi_no_yamaoku.quickcheck.QuickCheckFramework where
+
+import xyz.denshi_no_yamaoku.quickcheck.QuickCheckRunner (RunnerData, makeTasks)
+import xyz.denshi_no_yamaoku.quickcheck.NativeDefs (Fingerprint, Framework, Runner)
+
+native module interface Framework where {
+  /**
+   * Tells the Framework to look for modules that implements quickcheck.Properties, and
+   * treat them as test suites.
+   */
+  public static final sbt.testing.SubclassFingerprint fp =
+    new sbt.testing.SubclassFingerprint() {
+      @Override public boolean isModule() { return false; }
+      @Override public String superclassName() { return "xyz.denshi_no_yamaoku.quickcheck.Properties"; }
+      @Override public boolean requireNoArgConstructor() { return false; }
+    };
+
+  @Override
+  public String name() { return "QuickCheck"; }
+
+  @Override
+  public sbt.testing.Fingerprint[] fingerprints() {
+    return new sbt.testing.Fingerprint[] { fp };
+  }
+
+  @Override
+  public sbt.testing.Runner runner(final String[] args, final String[] remoteArgs, final ClassLoader testClassLoader) {
+    return
+      runner_(
+        Thunk.lazy(args),
+        Thunk.lazy(remoteArgs),
+        Thunk.lazy(testClassLoader)
+      );
+  }
+}
+
+--- Prepares a 'Runner'.
+---
+--- Created as the implementation of @Framework.runner@.
+runner_ :: JArray String -> JArray String -> ClassLoader -> Runner
+runner_ args remoteArgs testClassLoader =
+  let tasks = makeTasks testClassLoader
+  in
+  QuickCheckRunner.mk $ RunnerData { args, remoteArgs, tasks }

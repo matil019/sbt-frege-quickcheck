@@ -1,0 +1,14 @@
+/bin/
+*.class
+/lib_managed
+project/boot
+target
+.scala_dependencies
+/\.target/
+/\.cache
+/\.project
+/\.classpath
+/\.settings/
+/\.manager/
+/\.idea/
+/\.idea_modules/

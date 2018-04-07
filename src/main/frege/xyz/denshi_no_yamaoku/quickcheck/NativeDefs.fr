@@ -1,0 +1,37 @@
+--- A collection of native definitions of the classes in @sbt.testing@ for this project.
+module xyz.denshi_no_yamaoku.quickcheck.NativeDefs where
+
+data Event = pure native sbt.testing.Event
+
+data EventHandler = pure native sbt.testing.EventHandler where
+  native handle :: EventHandler -> Event -> IO ()
+
+data Fingerprint = pure native sbt.testing.Fingerprint
+
+data Framework = pure native sbt.testing.Framework
+
+data Logger = pure native sbt.testing.Logger
+
+data OptionalThrowable = pure native sbt.testing.OptionalThrowable where
+  pure native new :: ()        -> OptionalThrowable
+                   | Throwable -> OptionalThrowable
+
+data Runner = native sbt.testing.Runner
+
+data Selector = pure native sbt.testing.Selector
+
+data Status = pure native sbt.testing.Status where
+  pure native success sbt.testing.Status.Success :: Status
+  pure native error   sbt.testing.Status.Error   :: Status
+  pure native failure sbt.testing.Status.Failure :: Status
+
+data TaskDef = pure native sbt.testing.TaskDef where
+  pure native fingerprint :: TaskDef -> Fingerprint
+  pure native fullyQualifiedName :: TaskDef -> String
+derive ArrayElement TaskDef
+
+data Task = pure native sbt.testing.Task
+derive ArrayElement Task
+
+data TestSelector = pure native sbt.testing.TestSelector where
+  pure native new :: String -> TestSelector

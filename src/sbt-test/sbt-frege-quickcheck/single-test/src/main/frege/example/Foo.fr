@@ -1,0 +1,4 @@
+module example.Foo where
+
+succs :: (Enum a) => [a] -> [a]
+succs = map succ

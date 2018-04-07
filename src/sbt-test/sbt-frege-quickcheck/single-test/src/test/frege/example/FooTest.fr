@@ -1,0 +1,14 @@
+module example.FooTest where
+
+import frege.test.QuickCheck
+import example.Foo (succs)
+
+data Properties = pure native xyz.denshi_no_yamaoku.quickcheck.Properties
+
+native module interface Properties where {}
+
+intSuccs = property (\(xs::[Int]) -> succs xs == map succ xs)
+intSuccs2 = property (\(xs::[Int]) -> succs xs /= map succ xs)
+intSuccs3 = property (\(xs::[Int]) -> succs xs == map pred xs)
+
+alwaysThrow = property (\(xs::[Int]) -> error "sorry!" :: Bool)

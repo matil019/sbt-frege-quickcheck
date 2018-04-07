@@ -1,0 +1,75 @@
+module xyz.denshi_no_yamaoku.quickcheck.QuickCheckTask where
+
+import frege.tools.Quick (Counter)
+import xyz.denshi_no_yamaoku.quickcheck.NativeDefs
+         ( Event, EventHandler, Fingerprint, Logger, OptionalThrowable, Status
+         , Task, TaskDef, TestSelector )
+import xyz.denshi_no_yamaoku.quickcheck.QuickCheckEvent ()
+
+native module interface Task where {
+  final private TTaskData dat;
+  QuickCheckTask(final TTaskData dat) { this.dat = dat; }
+  final public static QuickCheckTask mk(final TTaskData dat) { return new QuickCheckTask(dat); }
+
+  @Override
+  final public String[] tags() {
+    return TTaskData.tags(dat);
+  }
+
+  @Override
+  final public sbt.testing.Task[] execute(
+    final sbt.testing.EventHandler eventHandler,
+    final sbt.testing.Logger[] loggers
+  ) {
+    return PreludeBase.TST.performUnsafe(
+      TTaskData.execute(dat, Thunk.lazy(eventHandler), Thunk.lazy(loggers)).call()
+    ).call();
+  }
+
+  @Override
+  final public sbt.testing.TaskDef taskDef() {
+    return TTaskData.taskDef(dat);
+  }
+}
+
+--- Each field implements @Task@.
+data TaskData = TaskData
+  { tags :: JArray String
+  , execute :: EventHandler -> JArray Logger -> IOMutable (JArray Task)
+  , taskDef :: TaskDef
+  }
+
+--- Instantiates the interface @Task@ with the supplied 'TaskData'.
+pure native mk xyz.denshi_no_yamaoku.quickcheck.QuickCheckTask.mk :: TaskData -> Task
+
+--- A constant which is recognized by the framework as "duration unknown".
+unknownDuration :: Long
+unknownDuration = -1
+
+--- Executes a QuickCheck test and pass the results to the event handler.
+---
+--- Intended to be partially applied and be assigned to 'TaskData.execute'.
+---
+--- Parameters:
+--- - @fullyQualifiedName@: the FQCN of the module in which @prop@ is defined.
+--- - @prop@: the name of the property which @runCheck@ tests.
+--- - @fingerprint@: the 'Fingerprint' with which the module was identified as a test suite.
+--- - @runCheck@: an action that performs QuickCheck when executed.
+executeCheck :: String -> String -> Fingerprint -> IO Counter -> EventHandler -> JArray Logger -> IOMutable (JArray Task)
+executeCheck fullyQualifiedName prop fingerprint runCheck eventHandler _ = do
+    (status, throwable) <- do
+            counter <- runCheck
+            return (toStatus counter, OptionalThrowable.new ())
+        `catch` \(e::Throwable) -> return (Status.error, OptionalThrowable.new e)
+    let selector = TestSelector.new prop
+        duration = unknownDuration
+    eventHandler.handle $ QuickCheckEvent.mk $ QuickCheckEvent.EventData
+      { fullyQualifiedName, fingerprint, selector, status, throwable, duration }
+    newArray 0
+
+--- Interprets the test result ('Counter') into 'Status'.
+toStatus :: Counter -> Status
+toStatus c
+  | c.aborted     = Status.error
+  | c.failed /= 0 = Status.failure
+  | otherwise     = Status.success
