@@ -3,9 +3,9 @@ module xyz.denshi_no_yamaoku.quickcheck.QuickCheckRunner where
 import frege.compiler.Javatypes (forName)
 import frege.compiler.common.CompilerOptions (standardGlobal)
 import frege.compiler.types.Global (Global)
-import frege.control.monad.State (evalStateT)
+import frege.control.monad.State (evalStateT, execStateT)
 import frege.java.Net (URLClassLoader)
-import frege.tools.Quick (Counter, Options, checkField, defaultOptions, getProps)
+import frege.tools.Quick (Counter, Options, checkField, defaultOptions, getProps, myTarget)
 import xyz.denshi_no_yamaoku.quickcheck.NativeDefs (Fingerprint, Runner, Task, TaskDef)
 import xyz.denshi_no_yamaoku.quickcheck.QuickCheckTask (TaskData, executeCheck)
 
@@ -81,5 +81,5 @@ freshGlobal testframeworkLoader = do
     loader <- do
         noURLs <- newArray 0
         URLClassLoader.new noURLs testframeworkLoader
-    g <- standardGlobal
+    g <- standardGlobal >>= execStateT myTarget
     return g.{ sub <- _.{ loader } }
