@@ -1,6 +1,5 @@
 name := "sbt-frege-quickcheck"
 organization := "xyz.denshi_no_yamaoku"
-version := "0.2"
 
 autoScalaLibrary := false
 crossPaths := false
