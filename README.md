@@ -6,7 +6,7 @@ QuickCheck with `sbt test` command.
 sbt-frege-quickcheck is known to work with:
 
 - sbt-1.1.2
-- Frege-3.24.100.1-jdk8
+- frege-3.24.100.1-jdk8
 - sbt-frege-3.0.0
 
 Great thanks to sbt, Frege and sbt-frege:
@@ -22,7 +22,7 @@ Please put the following into your `build.sbt`:
 
 ```scala
 resolvers += "denshi-no-yamaoku.xyz" at "http://maven.denshi-no-yamaoku.xyz/"
-libraryDependencies += "xyz.denshi_no_yamaoku" % "sbt-frege-quickcheck" % "0.1" % Test
+libraryDependencies += "xyz.denshi_no_yamaoku" % "sbt-frege-quickcheck" % "0.2" % Test
 testFrameworks += new TestFramework("xyz.denshi_no_yamaoku.quickcheck.QuickCheckFramework")
 ```
 
